@@ -41,11 +41,11 @@ class ClassContent(object):
         file = os.path.join(path, 'ult_srcs.cmake')
         if type == '':
             lines = []
-            lines.extend(self.getHeaders())
+            lines.extend(self.getHeaders(type = 'cmake'))
             lines.append('ult_add_curr_to_include_path()\n')
         elif type == 'code':
             lines = []
-            lines.extend(self.getHeaders())
+            lines.extend(self.getHeaders(type = 'cmake'))
             lines.append('set(TMP_HEADERS_\n')
             lines.append('    ${CMAKE_CURRENT_LIST_DIR}/' + self.sourceFile[:-2] + '_test.h' + '\n')
             lines.append('    ${CMAKE_CURRENT_LIST_DIR}/' + self.sourceFile[:-2] + '_test_case.h' + '\n')
@@ -65,7 +65,7 @@ class ClassContent(object):
             lines.append('ult_add_curr_to_include_path()\n')
         elif type == 'resource':
             lines = []
-            lines.extend(self.getHeaders())
+            lines.extend(self.getHeaders(type = 'cmake'))
             lines.append('set(TMP_RESOURCES_\n')
             lines.append('    ${CMAKE_CURRENT_LIST_DIR}/media_driver_codec_ult.rc\n')
             lines.append('    )\n')
@@ -174,6 +174,7 @@ class ClassContent(object):
             indent = 0
         if not update:
             lines = []
+            lines.extend(self.getHeaders(type = 'h', fileName = self.sourceFile[:-2] + '_test_data.h'))
             define = '__' + (self.sourceFile[:-2] + '_test_data_h').upper() + '__'
             lines.append('#ifndef ' + define + '\n')
             lines.append('#define ' + define + '\n')
@@ -371,6 +372,7 @@ class ClassContent(object):
             indent = 0
         if not update:
             lines = []
+            lines.extend(self.getHeaders(type = 'cpp', fileName = self.sourceFile[:-2] + '_test_case.cpp'))
             lines.append('#include "' + self.sourceFile[:-2] + '_test_case.h"\n')
             resourcePath = 'resource.h'
             lines.append('#include "' + resourcePath + '"\n')
@@ -424,6 +426,7 @@ class ClassContent(object):
             indent = 0
         if not update:
             lines = []
+            lines.extend(self.getHeaders(type = 'h', fileName = self.sourceFile[:-2] + '_test_case.h'))
             define = '__' + (self.sourceFile[:-2] + '_test_case_h').upper() + '__'
             lines.append('#ifndef ' + define + '\n')
             lines.append('#define ' + define + '\n')
@@ -488,6 +491,7 @@ class ClassContent(object):
             indent = 0
         if not update:
             lines = []
+            lines.extend(self.getHeaders(type = 'h', fileName = self.sourceFile[:-2] + '_test.h'))
             lines.append('#include "' + self.sourceFile[:-2] + '_test_data.h"\n')
             lines.append('#include "' + self.sourceFile + '"\n')
             lines.append('\n')
@@ -551,14 +555,8 @@ class ClassContent(object):
             indent = 0
         if not update:
             lines = []
+            lines.extend(self.getHeaders(type = 'cpp', fileName = self.sourceFile[:-2] + '_test.cpp'))
             lines.append('#include "' + self.sourceFile[:-2] + '_test.h"\n')
-            lines.append('#include "encode_hevc_brc_mock.h"\n')
-            lines.append('#include "media_scalability_mock.h"\n')
-            lines.append('#include "media_feature_manager_mock.h"\n')
-            lines.append('#include "encode_hevc_vdenc_packet_g12.h"\n')
-            lines.append('#include "encode_huc_brc_init_packet.h"\n')
-            lines.append('#include "encode_huc_brc_update_packet.h"\n')
-            lines.append('#include "encode_pak_integrate_packet.h"\n')
             lines.append('\n')
             if self.parser.namespace:
                 lines.append('namespace ' + self.parser.namespace + '\n')
@@ -633,31 +631,64 @@ class ClassContent(object):
         print('generate ', file)
 
 
-    def getHeaders(self):
-        lines = []
-        lines.append('# Copyright (c) 2018 - 2019, Intel Corporation\n')
-        lines.append('#\n')
-        lines.append('# Permission is hereby granted, free of charge, to any person obtaining a\n')
-        lines.append('# copy of this software and associated documentation files (the "Software"),\n')
-        lines.append('# to deal in the Software without restriction, including without limitation\n')
-        lines.append('# the rights to use, copy, modify, merge, publish, distribute, sublicense,\n')
-        lines.append('# and/or sell copies of the Software, and to permit persons to whom the\n')
-        lines.append('# Software is furnished to do so, subject to the following conditions:\n')
-        lines.append('#\n')
-        lines.append('# The above copyright notice and this permission notice shall be included\n')
-        lines.append('# in all copies or substantial portions of the Software.\n')
-        lines.append('#\n')
-        lines.append('# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS\n')
-        lines.append('# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n')
-        lines.append('# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL\n')
-        lines.append('# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR\n')
-        lines.append('# OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,\n')
-        lines.append('# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR\n')
-        lines.append('# OTHER DEALINGS IN THE SOFTWARE.\n')
-        lines.append('\n')
-        return lines
-
-
+    def getHeaders(self, type, fileName = ''):
+        if type == 'cmake':
+            lines = []
+            lines.append('# Copyright (c) 2018 - 2019, Intel Corporation\n')
+            lines.append('#\n')
+            lines.append('# Permission is hereby granted, free of charge, to any person obtaining a\n')
+            lines.append('# copy of this software and associated documentation files (the "Software"),\n')
+            lines.append('# to deal in the Software without restriction, including without limitation\n')
+            lines.append('# the rights to use, copy, modify, merge, publish, distribute, sublicense,\n')
+            lines.append('# and/or sell copies of the Software, and to permit persons to whom the\n')
+            lines.append('# Software is furnished to do so, subject to the following conditions:\n')
+            lines.append('#\n')
+            lines.append('# The above copyright notice and this permission notice shall be included\n')
+            lines.append('# in all copies or substantial portions of the Software.\n')
+            lines.append('#\n')
+            lines.append('# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS\n')
+            lines.append('# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n')
+            lines.append('# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL\n')
+            lines.append('# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR\n')
+            lines.append('# OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,\n')
+            lines.append('# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR\n')
+            lines.append('# OTHER DEALINGS IN THE SOFTWARE.\n')
+            lines.append('\n')
+            return lines
+        else:
+            lines = []
+            lines.append('/*===================== begin_copyright_notice ==================================\n')
+            lines.append('\n')
+            lines.append('INTEL CONFIDENTIAL\n')
+            lines.append('Copyright 2019\n')
+            lines.append('Intel Corporation All Rights Reserved.\n')
+            lines.append('\n')
+            lines.append('The source code contained or described herein and all documents related to the\n')
+            lines.append('source code ("Material") are owned by Intel Corporation or its suppliers or\n')
+            lines.append('licensors. Title to the Material remains with Intel Corporation or its suppliers\n')
+            lines.append('and licensors. The Material contains trade secrets and proprietary and confidential\n')
+            lines.append('information of Intel or its suppliers and licensors. The Material is protected by\n')
+            lines.append('worldwide copyright and trade secret laws and treaty provisions. No part of the\n')
+            lines.append('Material may be used, copied, reproduced, modified, published, uploaded, posted,\n')
+            lines.append("transmitted, distributed, or disclosed in any way without Intel's prior express\n")
+            lines.append('written permission.\n')
+            lines.append('\n')
+            lines.append('No license under any patent, copyright, trade secret or other intellectual\n')
+            lines.append('property right is granted to or conferred upon you by disclosure or delivery\n')
+            lines.append('of the Materials, either expressly, by implication, inducement, estoppel\n')
+            lines.append('or otherwise. Any license under such intellectual property rights must be\n')
+            lines.append('express and approved by Intel in writing.\n')
+            lines.append('\n')
+            lines.append('======================= end_copyright_notice ==================================*/\n')
+            lines.append('//!\n')
+            lines.append('//! \\file     ' + fileName + '\n')
+            if type == 'h':
+                lines.append('//! \\brief    header file of ' + self.className + ' class\n')
+            else:
+                lines.append('//! \\brief    implementation file of ' + self.className + ' class\n')
+            lines.append('//! \\details\n')
+            lines.append('//! \n')
+            return lines
 
 
 
