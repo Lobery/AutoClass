@@ -122,12 +122,14 @@ class ClassContent(object):
             self.tag = 'vp'
         elif 'cp' in separatePath:
             self.tag = 'cp'
-            return 'cp not supported currently!'
         elif 'os' in separatePath:
             self.tag = 'os'
         else:
             self.tag = 'shared'
             return 'shared not supported currently!'
+        cmakeFile = path[:path.find('media')] + 'media\\media_embargo\\media_driver_next\\ult\\windows\\test\\' + self.tag + '\\ult_srcs.cmake'
+        if not os.path.exists(cmakeFile):
+            return 'missing cmake file. Platform not supported!'
         self.workspace = path[:path.find('media')] + 'media\\media_embargo\\media_driver_next\\ult\\windows\\test\\' + self.tag + '\\test_data'
         if not os.path.exists(self.workspace):
             os.makedirs(self.workspace)
