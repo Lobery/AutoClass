@@ -455,7 +455,14 @@ class ClassContent(object):
         newLines.append(' ' * indent + 'virtual void SetUp()\n')
         newLines.append(' ' * indent + '{\n')
         indent += 3
-        newLines.append(' ' * indent + 'm_test = MOS_New(' + self.className + 'Test, nullptr, nullptr);\n')
+        newLines.append(' ' * indent + 'm_test = MOS_New(' + self.className + 'Test')
+        construct_id = self.getMethodIndex(self.className)
+        if construct_id >= 0:
+            construct = self.parser.methods_info[construct_id]
+            for i, para in enumerate(construct['parameters']):
+                newLines.append(', ')
+                newLines.append(para['name'].lstrip('*').lstrip('&'))
+        newLines.append(');\n')
         indent -= 3
         newLines.append(' ' * indent + '}\n')
         newLines.append('\n')
@@ -604,7 +611,7 @@ class ClassContent(object):
         self.checkCMake()
         file = os.path.join(self.workspace, 'resource.h')
         resource = self.className + '_' + self.functionName
-        insertLine = '#define ' + resource + ' ' * max(1, 47-len(resource))
+        insertLine = '#define ' + resource + ' ' * (100 - len(resource))
         if os.path.exists(file):
             with open(file, 'r') as fopen:
                 lines = fopen.readlines()
@@ -621,15 +628,15 @@ class ClassContent(object):
             fopen.writelines(lines)
         print('generate ', file)
         return ''
-
+    
     def generateMediaDriverCodecUlt(self):
-        file = os.path.join(self.workspace, 'media_driver_codec_ult.rc')
+        file = os.path.join(self.workspace, 'media_driver_' + self.tag +'_ult.rc')
         if not os.path.exists(file):
             with open(file, 'w') as fopen:
                 fopen.write('#include "resource.h"\n')
         with open(file, 'a') as fopen:
             resource = self.className + '_' + self.functionName
-            fopen.write(resource + ' ' * max(1, (45 - len(resource))) + 'TEST_DATA     "focus_test/' + self.className + '/' + self.className + '_' + self.functionName + '.dat"\n')
+            fopen.write(resource + ' ' * (100 - len(resource)) + 'TEST_DATA     "focus_test/' + self.className + '/' + self.className + '_' + self.functionName + '.dat"\n')
         print('generate ', file)
 
 
