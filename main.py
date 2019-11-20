@@ -313,6 +313,7 @@ class MainWindow(QMainWindow):
             definition = self.skipDescripter(definition)
             definition = self.skipQualifier(definition)
             format = definition.split(' ')[0].strip('*').strip('&')
+            format = format.replace('std::', '')
             if type == 'input':
                 self.Content.inputType.append(format)
             else:

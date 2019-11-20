@@ -1,0 +1,8 @@
+##ignore these files##
+/build/
+/dist/
+/.vs/
+sample_header.txt
+/__pycache__/
+main.spec
+/ult_generator/__pycache__/

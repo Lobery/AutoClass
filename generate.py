@@ -1,5 +1,6 @@
 import os
 import copy
+from xml.dom import minidom
 class ClassContent(object):
 
     def __init__(self):
@@ -166,6 +167,9 @@ class ClassContent(object):
         self.codePath = ultPath
         return ''
             
+
+
+
     # append if exists
     def generateTestDataH(self, update = False):
         file = os.path.join(self.codePath, self.sourceFile[:-2] + '_test_data.h')
@@ -180,7 +184,7 @@ class ClassContent(object):
             define = '__' + (self.sourceFile[:-2] + '_test_data_h').upper() + '__'
             lines.append('#ifndef ' + define + '\n')
             lines.append('#define ' + define + '\n')
-            lines.append('#include "read_test_data.h"\n')
+            lines.append('#include "read_test_data_xml.h"\n')
             if self.parser.namespace:
                 lines.append('namespace ' + self.parser.namespace + '\n')
                 lines.append('{\n')
@@ -202,14 +206,14 @@ class ClassContent(object):
 
         insertLines = []
         insertLines.append('\n')
-        insertLines.append(' ' * indent + 'class ' + self.className + '_' + self.functionName + '_TestData : public TestData\n')
+        insertLines.append(' ' * indent + 'class ' + self.className + '_' + self.functionName + '_TestData : public TestDataXml\n')
         insertLines.append(' ' * indent + '{\n')
         insertLines.append(' ' * indent + 'public:\n')
         indent += 3
         insertLines.append(' ' * indent + self.className + '_' + self.functionName + '_TestData(uint32_t inputRcId, std::string &testName)\n')
         insertLines.append(' ' * indent + '{\n')
         indent += 3
-        insertLines.append(' ' * indent + 'm_readTestData = MOS_New(ReadTestData, inputRcId, testName);\n')
+        insertLines.append(' ' * indent + 'm_readTestData = MOS_New(ReadTestDataFromXml, inputRcId);\n')
         indent -= 3
         insertLines.append(' ' * indent + '}\n')
         insertLines.append('\n')
@@ -236,31 +240,31 @@ class ClassContent(object):
         indent += 3
         for index, item in enumerate(self.inputName):
             if self.inputType[index].find('vector') >= 0:
-                insertLines.append(' ' * indent + 'for (uint32_t i = 0; i < m_readTestData->GetInputParams(caseName, "' + item + '_count", 0); i++)\n')
+                insertLines.append(' ' * indent + 'for (uint32_t count = 0; count < m_readTestData->GetInputParams<uint32_t>(caseName, "Input", "' + item + '_count", 0); count++)\n')
                 insertLines.append(' ' * indent + '{\n')
                 indent += 3
-                insertLines.append(' ' * indent + 'inputParameters.' + item + '.push_back(m_readTestData->GetInputParams(caseName, "' + item + '_"+std::to_string(i), "")); \n')
+                insertLines.append(' ' * indent + 'inputParameters.' + item + '.push_back(m_readTestData->GetInputParams<' + self.getVectorType(self.inputPara[index]) +'>(caseName, , "Input", "' + item + '_"+std::to_string(count), "")); \n')
                 indent -= 3
                 insertLines.append(' ' * indent + '}\n')
             else:
-                insertLines.append(' ' * indent + 'inputParameters.' + item + ' = ' + self.getCastType(self.inputType[index]) + 'm_readTestData->GetInputParams(caseName, "' + item + '", ' + self.getParaValue(self.inputType[index]) + ');\n')
+                insertLines.append(' ' * indent + 'inputParameters.' + item + ' = ' + self.getCastType(self.inputType[index]) + 'm_readTestData->GetInputParams<' + self.inputType[index] + '>(caseName, "Input", "' + item + '", ' + self.getParaValue(self.inputType[index]) + ');\n')
         indent -= 3
         insertLines.append(' ' * indent + '}\n')
         insertLines.append('\n')
         insertLines.append(' ' * indent + 'void SetOutputReference(std::string &caseName)\n')
         insertLines.append(' ' * indent + '{\n')
         indent += 3
-        insertLines.append(' ' * indent + 'm_returnValue = m_readTestData->GetInputParams(caseName, "returnValue", 0);\n')
+        insertLines.append(' ' * indent + 'm_returnValue = m_readTestData->GetInputParams<uint8_t>(caseName, "ReturnValue", "returnValue", 0);\n')
         for index, item in enumerate(self.outputName):
             if self.outputType[index].find('vector') >= 0:
-                insertLines.append(' ' * indent + 'for (uint32_t i = 0; i < m_readTestData->GetInputParams(caseName, "' + item + '_count", 0); i++)\n')
+                insertLines.append(' ' * indent + 'for (uint32_t count = 0; count < m_readTestData->GetInputParams<uint32_t>(caseName, "Output", "' + item + '_count", 0); count++)\n')
                 insertLines.append(' ' * indent + '{\n')
                 indent += 3
-                insertLines.append(' ' * indent + 'outputParameters.' + item + '.push_back(m_readTestData->GetInputParams(caseName, "' + item + '_"+std::to_string(i), "")); \n')
+                insertLines.append(' ' * indent + 'outputParameters.' + item + '.push_back(m_readTestData->GetInputParams<' + self.getVectorType(self.outputPara[index]) + '>(caseName, "Output", "' + item + '_"+std::to_string(count), "")); \n')
                 indent -= 3
                 insertLines.append(' ' * indent + '}\n')
             else:
-                insertLines.append(' ' * indent + 'outputParameters.' + item + ' = ' + self.getCastType(self.outputType[index]) + 'm_readTestData->GetInputParams(caseName, "' + item + '", ' + self.getParaValue(self.outputType[index]) + ');\n')
+                insertLines.append(' ' * indent + 'outputParameters.' + item + ' = ' + self.getCastType(self.outputType[index]) + 'm_readTestData->GetInputParams<' + self.outputType[index] + '>(caseName, "Output", "' + item + '", ' + self.getParaValue(self.outputType[index]) + ');\n')
         indent -= 3
         insertLines.append(' ' * indent + '}\n')
         indent -= 3
@@ -282,66 +286,86 @@ class ClassContent(object):
             return '0'
         return s
 
-    def generateVector(self, name, value):
-        value = value.strip().strip('}').strip('{').strip()
-        value = value.split(',')
+    def getVectorValue(self, values):
+        value = values.strip().strip('{').strip('}').split(',')
         value_list = []
         for v in value:
+            v = v.strip()
             if v:
+                # strip "" or ''
+                if v[0] in ('"', "'"):
+                    v = v[1:-1]
                 value_list.append(v)
-        lines = []
-        lines.append(name + '_count = ' + str(len(value_list)) + '\n')
-        for idx, value in enumerate(value_list):
-            lines.append(name + '_' + str(idx + 1) + ' = ' + self.changeBool(value) + '\n')
-        return lines
+        return value_list
 
+    def getVectorType(self, para, namespace = True):
+        type = para[para.find('<') + 1 : para.rfind('>')].strip()
+        if not namespace:
+            type = type.replace('std::', '')
+        return type
 
     def generateDat(self, update = False, append = True):
         path = self.workspace + '\\focus_test\\' + self.className + '\\'
         if not os.path.exists(path):
             os.makedirs(path)
-        file = os.path.join(path, self.className + '_' + self.functionName + '.dat')
+        file = os.path.join(path, self.className + '_' + self.functionName + '.xml')
         if update:
             with open(file, 'r') as fopen:
                 lines = fopen.readlines()
         else:
             lines = []
+            lines.append('<?xml version="1.0"?>\n')
+        # delete old version
         if update and not append:
             deleteHead, deleteTail = -1, -1
             for idx, line in enumerate(lines):
-                if line.find('<' + self.caseName + '>') >= 0:
+                if line.find('TestCase name') >= 0 and line.find(self.caseName) >= 0:
                     deleteHead = idx
                     break
+            if deleteHead < 0:
+                print('Update xml error!')
+                return
             for idx in range(deleteHead + 1, len(lines)):
-                if lines[idx].find('<') >= 0:
+                if lines[idx].find('/TestCase') >= 0:
                     deleteTail = idx
                     break
-            if deleteTail > 0:
-                lines = lines[:deleteHead] + lines[deleteTail:]
+            if deleteTail < 0:
+                print('Update xml error!')
+                return
+            lines = lines[:deleteHead] + lines[deleteTail + 1:]
+        lines.append('<TestCase name = "' + self.caseName + '">\n')
+        lines.append('    <Input>\n')
+        for i in range(len(self.inputPara)):
+            if self.inputType[i].find('vector') >= 0:
+                type = self.getVectorType(self.inputPara[i], False)
+                value = self.getVectorValue(self.inputValue[i])
+                lines.append('        <' + self.inputName[i] + '_count type = "int" value = "' + str(len(value)) + '"/>\n')
+                for idx, value in enumerate(value):
+                    lines.append('        <' + self.inputName[i] + '_' + str(idx) + ' type = "' + type + '" value = "' + value + '"/>\n')
             else:
-                liens = lines[:deleteHead]
-
-        if lines and lines[-1].strip():
-            lines.append('\n')
-        lines.append('<' + self.caseName + '>\n')
-        lines.append('#Input\n')
-        for index in range(len(self.inputName)):
-            if self.inputType[index].find('vector') >= 0:
-                lines.extend(self.generateVector(self.inputName[index], self.inputValue[index]))
+                if self.inputValue[i][0] in ('"', "'"):
+                    self.inputValue[i] = self.inputValue[i][1:-1]
+                lines.append('        <' + self.inputName[i] + ' type = "' + self.inputType[i] + '" value = "' + self.inputValue[i] + '"/>\n')
+        lines.append('    </Input>\n')
+        lines.append('    <ReturnValue>\n')
+        lines.append('        returnValue type = "int" value = "0"/>\n')
+        lines.append('    </ReturnValue>\n')
+        lines.append('    <Output>\n')
+        for i in range(len(self.outputPara)):
+            if self.outputType[i].find('vector') >= 0:
+                type = self.getVectorType(self.outputPara[i], False)
+                value = self.getVectorValue(self.outputValue[i])
+                lines.append('        <' + self.outputName[i] + '_count type = "int" value = "' + str(len(value)) + '"/>\n')
+                for idx, value in enumerate(value):
+                    lines.append('        <' + self.outputName[i] + '_' + str(idx) + ' type = "' + type + '" value = "' + value + '"/>\n')
             else:
-                lines.append(self.inputName[index] + ' = ' + self.changeBool(self.inputValue[index]) + '\n')
-        lines.append('\n')
-        lines.append('#ReturnValue\n')
-        lines.append('returnValue = ' + self.returnValue + '\n')
-        lines.append('\n')
-        lines.append('#Output\n')
-        for index in range(len(self.outputName)):
-            if self.outputType[index].find('vector') >= 0:
-                lines.extend(self.generateVector(self.outputName[index], self.outputValue[index]))
-            else:
-                lines.append(self.outputName[index] + ' = ' + self.changeBool(self.outputValue[index]) + '\n')
-        with open(file,'w') as fout:
-            fout.writelines(lines)
+                if self.outputValue[i][0] in ('"', "'"):
+                    self.outputValue[i] = self.outputValue[i][1:-1]
+                lines.append('        <' + self.outputName[i] + ' type = "' + self.outputType[i] + '" value = "' + self.outputValue[i] + '"/>\n')
+        lines.append('    </Output>\n')
+        lines.append('</TestCase>\n')
+        with open(file, 'w', encoding='UTF-8') as fopen:
+            fopen.writelines(lines)
         print('generate ', file)
 
     def getCastType(self, type):
@@ -400,12 +424,10 @@ class ClassContent(object):
             newLines.append(' ' * indent + 'TEST_F(' + self.className + 'FT, ' + self.className + 'Test_' + self.functionName + ')\n')
             newLines.append(' ' * indent + '{\n')
             indent += 3
-            newLines.append(' ' * indent + 'std::string testNameMap[] = {\n')
-            newLines.append(' ' * indent + ' "' + self.caseName + '",\n')
-            newLines.append(' ' * indent + '};\n')
             newLines.append(' ' * indent + 'std::string testName = ::testing::UnitTest::GetInstance()->current_test_info()->name();\n')
             newLines.append(' ' * indent + self.className + '_' + self.functionName + '_TestData testData(' + self.className + '_' + self.functionName + ', testName);\n')
-            newLines.append(' ' * indent + 'for (auto i = 0; i < sizeof(testNameMap) / sizeof(std::string); i++)\n')
+            newLines.append(' ' * indent + 'std::vector<std::string> testNameMap = testData.m_readTestData->GetTestName();\n')
+            newLines.append(' ' * indent + 'for (size_t i = 0; i < testNameMap.size(); i++)\n')
             newLines.append(' ' * indent + '{\n')
             newLines.append(' ' * indent + '   testData.SetInput(testNameMap[i]);\n')
             newLines.append(' ' * indent + '   testData.SetOutputReference(testNameMap[i]);\n')
@@ -419,6 +441,14 @@ class ClassContent(object):
         with open(file,'w') as fout:
             fout.writelines(lines)
         print('generate ', file)
+
+    def getDefaultValue(self, para):
+        if '*' in para:
+            return 'nullptr'
+        if 'int' in para:
+            return '0'
+        if 'bool' in para:
+            return 'false'
 
     def generateTestCaseH(self, update = False):
         file = os.path.join(self.codePath, self.sourceFile[:-2] + '_test_case.h')
@@ -461,7 +491,7 @@ class ClassContent(object):
             construct = self.parser.methods_info[construct_id]
             for i, para in enumerate(construct['parameters']):
                 newLines.append(', ')
-                newLines.append(para['name'].lstrip('*').lstrip('&'))
+                newLines.append(self.getDefaultValue(para['name']))
         newLines.append(');\n')
         indent -= 3
         newLines.append(' ' * indent + '}\n')
@@ -545,6 +575,14 @@ class ClassContent(object):
                         insertLines.append(' ,')
                 insertLines.append('){};\n')
             insertLines.append(' ' * indent + 'virtual ~' + self.className + 'Test(){};\n')
+            insertLines.append('\n')
+            insertLines.append('//!\n')
+            insertLines.append('//! \\brief  Add focus test for ActivateVdencVideoPackets\n')
+            insertLines.append('//! \\param  [in] &testData\n')
+            insertLines.append('//!         reference to TestData\n')
+            insertLines.append('//! \\return MOS_STATUS\n')
+            insertLines.append('//!         MOS_STATUS_SUCCESS if success, else fail reason\n')
+            insertLines.append('//!\n')
             insertLines.append(' ' * indent + 'MOS_STATUS '+ self.functionName + 'Test(' + self.className + '_' + self.functionName + '_TestData &testData);\n')
             indent -= 3
             insertLines.append(' ' * indent + '};\n')
@@ -636,7 +674,7 @@ class ClassContent(object):
                 fopen.write('#include "resource.h"\n')
         with open(file, 'a') as fopen:
             resource = self.className + '_' + self.functionName
-            fopen.write(resource + ' ' * (100 - len(resource)) + 'TEST_DATA     "focus_test/' + self.className + '/' + self.className + '_' + self.functionName + '.dat"\n')
+            fopen.write(resource + ' ' * (100 - len(resource)) + 'TEST_DATA     "focus_test/' + self.className + '/' + self.className + '_' + self.functionName + '.xml"\n')
         print('generate ', file)
 
 
