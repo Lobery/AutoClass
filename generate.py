@@ -261,11 +261,11 @@ class ClassContent(object):
                 insertLines.append(' ' * indent + 'for (uint32_t i = 0; i < count; i++)\n')
                 insertLines.append(' ' * indent + '{\n')
                 indent += 3
-                insertLines.append(' ' * indent + 'inputParameters.' + item + '.push_back(m_readTestData->GetInputParams<' + self.getVectorType(self.inputPara[index]) +'>(caseName, , "Input", "' + item + '_"+std::to_string(i), "")); \n')
+                insertLines.append(' ' * indent + 'inputParameters.' + item + '.push_back(m_readTestData->GetInputParams<' + self.getVectorType(self.inputPara[index]) +'>(caseName, "Input", "' + item + '_"+std::to_string(i), ' + self.getDefaultValue(self.getVectorType(self.inputPara[index])) + ')); \n')
                 indent -= 3
                 insertLines.append(' ' * indent + '}\n')
             else:
-                insertLines.append(' ' * indent + 'inputParameters.' + item + ' = ' + self.getCastType(self.inputType[index]) + 'm_readTestData->GetInputParams<' + self.inputType[index] + '>(caseName, "Input", "' + item + '", ' + self.getParaValue(self.inputType[index]) + ');\n')
+                insertLines.append(' ' * indent + 'inputParameters.' + item + ' = ' + self.getCastType(self.inputType[index]) + 'm_readTestData->GetInputParams<' + self.inputType[index] + '>(caseName, "Input", "' + item + '", ' + self.getDefaultValue(self.inputType[index]) + ');\n')
         indent -= 3
         insertLines.append(' ' * indent + '}\n')
         insertLines.append('\n')
@@ -279,11 +279,11 @@ class ClassContent(object):
                 insertLines.append(' ' * indent + 'for (uint32_t i = 0; i < count; i++)\n')
                 insertLines.append(' ' * indent + '{\n')
                 indent += 3
-                insertLines.append(' ' * indent + 'outputParameters.' + item + '.push_back(m_readTestData->GetInputParams<' + self.getVectorType(self.outputPara[index]) + '>(caseName, "Output", "' + item + '_"+std::to_string(i), "")); \n')
+                insertLines.append(' ' * indent + 'outputParameters.' + item + '.push_back(m_readTestData->GetInputParams<' + self.getVectorType(self.outputPara[index]) + '>(caseName, "Output", "' + item + '_"+std::to_string(i), ' + self.getDefaultValue(self.getVectorType(self.outputPara[index])) + ')); \n')
                 indent -= 3
                 insertLines.append(' ' * indent + '}\n')
             else:
-                insertLines.append(' ' * indent + 'outputParameters.' + item + ' = ' + self.getCastType(self.outputType[index]) + 'm_readTestData->GetInputParams<' + self.outputType[index] + '>(caseName, "Output", "' + item + '", ' + self.getParaValue(self.outputType[index]) + ');\n')
+                insertLines.append(' ' * indent + 'outputParameters.' + item + ' = ' + self.getCastType(self.outputType[index]) + 'm_readTestData->GetInputParams<' + self.outputType[index] + '>(caseName, "Output", "' + item + '", ' + self.getDefaultValue(self.outputType[index]) + ');\n')
         indent -= 3
         insertLines.append(' ' * indent + '}\n')
         indent -= 3
@@ -392,21 +392,21 @@ class ClassContent(object):
             return '(' + type + ')'
         return ''
 
-    def getParaValue(self, type):
-        if 'vector' in type:
-            return 'null'
-        if any([i in type for i in ['int', 'short', 'long', 'double', 'float', 'size']]):
-            return '0'
-        elif type == 'float':
-            return '2.0'
-        elif type == 'char':
-            return "''"
-        elif type == 'bool':
-            return 'false'
-        elif type == 'selfDefined':
-            return '0'
-        else:
-            return 'null'
+    #def getParaValue(self, type):
+    #    if 'vector' in type:
+    #        return 'null'
+    #    if any([i in type for i in ['int', 'short', 'long', 'double', 'float', 'size']]):
+    #        return '0'
+    #    elif type == 'float':
+    #        return '2.0'
+    #    elif type == 'char':
+    #        return "''"
+    #    elif type == 'bool':
+    #        return 'false'
+    #    elif type == 'selfDefined':
+    #        return '0'
+    #    else:
+    #        return 'null'
 
 
     def generateTestCaseCpp(self, update = False, addCase = False):
@@ -462,9 +462,11 @@ class ClassContent(object):
         print('generate ', file)
 
     def getDefaultValue(self, para):
+        if 'string' in para:
+            return '""'
         if '*' in para:
             return 'nullptr'
-        if 'int' in para:
+        if any([i in para for i in ['int', 'short', 'long', 'double', 'float', 'size']]):
             return '0'
         if 'bool' in para:
             return 'false'
