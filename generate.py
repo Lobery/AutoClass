@@ -4,6 +4,7 @@ from xml.dom import minidom
 class ClassContent(object):
 
     def __init__(self):
+        self.BLANK_NUM = 100
         self.TestName = ''
         self.inputPara = []
         self.outputPara = []
@@ -131,6 +132,22 @@ class ClassContent(object):
         cmakeFile = path[:path.find('media')] + 'media\\media_embargo\\media_driver_next\\ult\\windows\\test\\' + self.tag + '\\ult_srcs.cmake'
         if not os.path.exists(cmakeFile):
             return 'missing cmake file. Platform not supported!'
+        with open(cmakeFile, 'r') as fopen:
+            lines = fopen.readlines()
+        found = [False, False]
+        insertIndex = -1
+        subdirectory = ['ult_include_subdirectory(../../../' + '/'.join(separatePath[:4]) + ')', 'ult_include_subdirectory(test_data)']
+        for idx, line in enumerate(lines):
+            if line.find('ult_include_subdirectory') >= 0:
+                insertIndex = idx
+            for i in range(len(subdirectory)):
+                if line.find(subdirectory[i]) >= 0:
+                    found[i] = True
+        for i in range(len(found)):
+            if not found[i]:
+                lines.insert(insertIndex + 1, '    ' + subdirectory[i] + '\n')
+        with open(cmakeFile, 'w') as fopen:
+            fopen.writelines(lines)
         self.workspace = path[:path.find('media')] + 'media\\media_embargo\\media_driver_next\\ult\\windows\\test\\' + self.tag + '\\test_data'
         if not os.path.exists(self.workspace):
             os.makedirs(self.workspace)
@@ -240,10 +257,11 @@ class ClassContent(object):
         indent += 3
         for index, item in enumerate(self.inputName):
             if self.inputType[index].find('vector') >= 0:
-                insertLines.append(' ' * indent + 'for (uint32_t count = 0; count < m_readTestData->GetInputParams<uint32_t>(caseName, "Input", "' + item + '_count", 0); count++)\n')
+                insertLines.append(' ' * indent + 'uint32_t count = m_readTestData->GetInputParams<uint32_t>(caseName, "Input", "' + item + '_count", 0);\n')
+                insertLines.append(' ' * indent + 'for (uint32_t i = 0; i < count; i++)\n')
                 insertLines.append(' ' * indent + '{\n')
                 indent += 3
-                insertLines.append(' ' * indent + 'inputParameters.' + item + '.push_back(m_readTestData->GetInputParams<' + self.getVectorType(self.inputPara[index]) +'>(caseName, , "Input", "' + item + '_"+std::to_string(count), "")); \n')
+                insertLines.append(' ' * indent + 'inputParameters.' + item + '.push_back(m_readTestData->GetInputParams<' + self.getVectorType(self.inputPara[index]) +'>(caseName, , "Input", "' + item + '_"+std::to_string(i), "")); \n')
                 indent -= 3
                 insertLines.append(' ' * indent + '}\n')
             else:
@@ -257,10 +275,11 @@ class ClassContent(object):
         insertLines.append(' ' * indent + 'm_returnValue = m_readTestData->GetInputParams<uint8_t>(caseName, "ReturnValue", "returnValue", 0);\n')
         for index, item in enumerate(self.outputName):
             if self.outputType[index].find('vector') >= 0:
-                insertLines.append(' ' * indent + 'for (uint32_t count = 0; count < m_readTestData->GetInputParams<uint32_t>(caseName, "Output", "' + item + '_count", 0); count++)\n')
+                insertLines.append(' ' * indent + 'uint32_t count = m_readTestData->GetInputParams<uint32_t>(caseName, "Output", "' + item + '_count", 0);\n')
+                insertLines.append(' ' * indent + 'for (uint32_t i = 0; i < count; i++)\n')
                 insertLines.append(' ' * indent + '{\n')
                 indent += 3
-                insertLines.append(' ' * indent + 'outputParameters.' + item + '.push_back(m_readTestData->GetInputParams<' + self.getVectorType(self.outputPara[index]) + '>(caseName, "Output", "' + item + '_"+std::to_string(count), "")); \n')
+                insertLines.append(' ' * indent + 'outputParameters.' + item + '.push_back(m_readTestData->GetInputParams<' + self.getVectorType(self.outputPara[index]) + '>(caseName, "Output", "' + item + '_"+std::to_string(i), "")); \n')
                 indent -= 3
                 insertLines.append(' ' * indent + '}\n')
             else:
@@ -649,7 +668,7 @@ class ClassContent(object):
         self.checkCMake()
         file = os.path.join(self.workspace, 'resource.h')
         resource = self.className + '_' + self.functionName
-        insertLine = '#define ' + resource + ' ' * (100 - len(resource))
+        insertLine = '#define ' + resource + ' ' * (self.BLANK_NUM - len(resource))
         if os.path.exists(file):
             with open(file, 'r') as fopen:
                 lines = fopen.readlines()
@@ -674,7 +693,7 @@ class ClassContent(object):
                 fopen.write('#include "resource.h"\n')
         with open(file, 'a') as fopen:
             resource = self.className + '_' + self.functionName
-            fopen.write(resource + ' ' * (100 - len(resource)) + 'TEST_DATA     "focus_test/' + self.className + '/' + self.className + '_' + self.functionName + '.xml"\n')
+            fopen.write(resource + ' ' * (self.BLANK_NUM - len(resource)) + 'TEST_DATA     "focus_test/' + self.className + '/' + self.className + '_' + self.functionName + '.xml"\n')
         print('generate ', file)
 
 
@@ -736,6 +755,3 @@ class ClassContent(object):
             lines.append('//! \\details\n')
             lines.append('//! \n')
             return lines
-
-
-
