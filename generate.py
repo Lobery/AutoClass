@@ -27,6 +27,8 @@ class ClassContent(object):
         self.FTindex = ''
         self.returnValue = ''
         self.tag = ''
+        self.log = ''
+        self.xmlFile = ''
 
     def clear(self):
         self.TestName = ''
@@ -38,6 +40,7 @@ class ClassContent(object):
         self.outputName = []
         self.outputType = []
         self.outputValue = []
+        self.log = ''
 
     def generateCmake(self, type, path, source = ''):
         file = os.path.join(path, 'ult_srcs.cmake')
@@ -290,13 +293,16 @@ class ClassContent(object):
         insertLines.append(' ' * indent + '};\n')
         
         if removeHead >= 0:
-            lines = lines[:removeHead] + lines[removeTail + 1:len(lines)-2] + insertLines + lines[len(lines)-2:]
+            lines = lines[:removeHead] + lines[removeTail+1:]
+        if self.parser.namespace:
+            lines = lines[:-2] + insertLines + lines[-2:]
         else:
-            lines = lines[:len(lines)-2] + insertLines + lines[len(lines)-2:]
+            lines = lines[:-1] + insertLines + lines[-1:]
 
         with open(file,'w') as fout:
             fout.writelines(lines)
         print('generate ', file)
+        self.log += 'generate ' + file + '.\n'
 
     def changeBool(self, s):
         if s.lower() == 'true':
@@ -386,6 +392,8 @@ class ClassContent(object):
         with open(file, 'w', encoding='UTF-8') as fopen:
             fopen.writelines(lines)
         print('generate ', file)
+        self.log += 'generate ' + file + '.\n'
+        self.xmlFile = file
 
     def getCastType(self, type):
         if 'int' in type and type != 'int':
@@ -409,7 +417,7 @@ class ClassContent(object):
     #        return 'null'
 
 
-    def generateTestCaseCpp(self, update = False, addCase = False):
+    def generateTestCaseCpp(self, update = False):
         file = os.path.join(self.codePath, self.sourceFile[:-2] + '_test_case.cpp')
         if self.parser.namespace:
             indent = 3
@@ -428,38 +436,29 @@ class ClassContent(object):
         else:
             with open(file) as fopen:
                 lines = fopen.readlines()
-        if addCase:
-            for idx, line in enumerate(lines):
-                if line.find('TEST_F(' + self.className + 'FT, ' + self.className + 'Test_' + self.functionName) >= 0:
-                    idx += 2
-                    while idx < len(lines):
-                        if lines[idx].find('}') >= 1:
-                            insertIdx = idx
-                            break
-                        idx += 1
-                    newLines = [' ' * indent + '    "' + self.caseName + '",\n']
+        newLines = []
+        newLines.append(' ' * indent + 'TEST_F(' + self.className + 'FT, ' + self.className + 'Test_' + self.functionName + ')\n')
+        newLines.append(' ' * indent + '{\n')
+        indent += 3
+        newLines.append(' ' * indent + 'std::string testName = ::testing::UnitTest::GetInstance()->current_test_info()->name();\n')
+        newLines.append(' ' * indent + self.className + '_' + self.functionName + '_TestData testData(' + self.className + '_' + self.functionName + ', testName);\n')
+        newLines.append(' ' * indent + 'std::vector<std::string> testNameMap = testData.m_readTestData->GetTestName();\n')
+        newLines.append(' ' * indent + 'for (size_t i = 0; i < testNameMap.size(); i++)\n')
+        newLines.append(' ' * indent + '{\n')
+        newLines.append(' ' * indent + '   testData.SetInput(testNameMap[i]);\n')
+        newLines.append(' ' * indent + '   testData.SetOutputReference(testNameMap[i]);\n')
+        newLines.append(' ' * indent + '   EXPECT_EQ(m_test->' + self.functionName + 'Test(testData), 0);\n')
+        newLines.append(' ' * indent + '}\n')
+        indent -= 3
+        newLines.append(' ' * indent + '}\n')
+        if self.parser.namespace:
+            lines = lines[:-1] + newLines + lines[-1:]
         else:
-            newLines = []
-            newLines.append(' ' * indent + 'TEST_F(' + self.className + 'FT, ' + self.className + 'Test_' + self.functionName + ')\n')
-            newLines.append(' ' * indent + '{\n')
-            indent += 3
-            newLines.append(' ' * indent + 'std::string testName = ::testing::UnitTest::GetInstance()->current_test_info()->name();\n')
-            newLines.append(' ' * indent + self.className + '_' + self.functionName + '_TestData testData(' + self.className + '_' + self.functionName + ', testName);\n')
-            newLines.append(' ' * indent + 'std::vector<std::string> testNameMap = testData.m_readTestData->GetTestName();\n')
-            newLines.append(' ' * indent + 'for (size_t i = 0; i < testNameMap.size(); i++)\n')
-            newLines.append(' ' * indent + '{\n')
-            newLines.append(' ' * indent + '   testData.SetInput(testNameMap[i]);\n')
-            newLines.append(' ' * indent + '   testData.SetOutputReference(testNameMap[i]);\n')
-            newLines.append(' ' * indent + '   EXPECT_EQ(m_test->' + self.functionName + 'Test(testData), 0);\n')
-            newLines.append(' ' * indent + '}\n')
-            indent -= 3
-            newLines.append(' ' * indent + '}\n')
-            insertIdx = -1
-        
-        lines = lines[:insertIdx] + newLines + lines[insertIdx:]
+            lines.extend(newLines)
         with open(file,'w') as fout:
             fout.writelines(lines)
         print('generate ', file)
+        self.log += 'generate ' + file + '.\n'
 
     def getDefaultValue(self, para):
         if 'string' in para:
@@ -470,6 +469,7 @@ class ClassContent(object):
             return '0'
         if 'bool' in para:
             return 'false'
+        return '""'
 
     def generateTestCaseH(self, update = False):
         file = os.path.join(self.codePath, self.sourceFile[:-2] + '_test_case.h')
@@ -536,6 +536,7 @@ class ClassContent(object):
         with open(file,'w') as fout:
             fout.writelines(lines)
         print('generate ', file)
+        self.log += 'generate ' + file + '.\n'
 
     def getMethodIndex(self, name):
         for i, method in enumerate(self.parser.methods_info):
@@ -614,6 +615,7 @@ class ClassContent(object):
         with open(file,'w') as fout:
             fout.writelines(lines)
         print('generate ', file)
+        self.log += 'generate ' + file + '.\n'
 
     def generateTestCpp(self, update = False):
         file = os.path.join(self.codePath, self.sourceFile[:-2] + '_test.cpp')
@@ -649,6 +651,7 @@ class ClassContent(object):
         with open(file,'w') as fout:
             fout.writelines(lines)
         print('generate ', file)
+        self.log += 'generate ' + file + '.\n'
     
     def checkCMake(self):
         path = self.workspace[:self.workspace.rfind('\\')]
@@ -686,6 +689,7 @@ class ClassContent(object):
         with open(file, 'w') as fopen:
             fopen.writelines(lines)
         print('generate ', file)
+        self.log += 'generate ' + file + '.\n'
         return ''
     
     def generateMediaDriverCodecUlt(self):
@@ -697,6 +701,7 @@ class ClassContent(object):
             resource = self.className + '_' + self.functionName
             fopen.write(resource + ' ' * (self.BLANK_NUM - len(resource)) + 'TEST_DATA     "focus_test/' + self.className + '/' + self.className + '_' + self.functionName + '.xml"\n')
         print('generate ', file)
+        self.log += 'generate ' + file + '.\n'
 
 
     def getHeaders(self, type, fileName = ''):

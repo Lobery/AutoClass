@@ -3,7 +3,7 @@
 # Form implementation generated from reading ui file '.\MainWindow.ui',
 # licensing of '.\MainWindow.ui' applies.
 #
-# Created: Wed Oct 30 11:13:54 2019
+# Created: Mon Nov 25 09:39:13 2019
 #      by: pyside2-uic  running on PySide2 5.12.0
 #
 # WARNING! All changes made in this file will be lost!
@@ -34,7 +34,7 @@ class Ui_MainWindow(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.textBrowser.sizePolicy().hasHeightForWidth())
         self.textBrowser.setSizePolicy(sizePolicy)
-        self.textBrowser.setMinimumSize(QtCore.QSize(150, 0))
+        self.textBrowser.setMinimumSize(QtCore.QSize(200, 0))
         self.textBrowser.setObjectName("textBrowser")
         self.gridLayout_2.addWidget(self.textBrowser, 0, 1, 1, 1)
         self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)

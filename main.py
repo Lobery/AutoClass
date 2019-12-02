@@ -187,14 +187,11 @@ class MainWindow(QMainWindow):
         if existCase:   # same case exists, update input paras   
             self.Content.generateTestDataH(update = True)
             self.Content.generateDat(update = True, append = False)
-            self.ui.textBrowser.setPlainText('Successfully update new case!')
+            self.ui.textBrowser.setPlainText(self.Content.log)
         elif existFunction:   # same test with different case name, update input values
             if self.sameInputParas():
-                self.Content.generateTestCaseCpp(update = True, addCase = True)
                 self.Content.generateDat(update = True, append = True)
-                self.Content.generateResourceH()
-                self.Content.generateMediaDriverCodecUlt()
-                self.ui.textBrowser.setPlainText('Successfully generate new case!')
+                self.ui.textBrowser.setPlainText(self.Content.log)
             else:
                 msgBox = QMessageBox()
                 str = ','.join(blank)
@@ -209,7 +206,7 @@ class MainWindow(QMainWindow):
             self.Content.generateTestCpp(True)
             self.Content.generateResourceH()
             self.Content.generateMediaDriverCodecUlt()
-            self.ui.textBrowser.setPlainText('Successfully generate new case!')
+            self.ui.textBrowser.setPlainText(self.Content.log)
         else:
             self.Content.generateTestDataH(existFile)
             self.Content.generateDat(update = False)
@@ -219,8 +216,11 @@ class MainWindow(QMainWindow):
             self.Content.generateTestCpp(existFile)
             self.Content.generateResourceH()
             self.Content.generateMediaDriverCodecUlt()
-            self.ui.textBrowser.setPlainText('Successfully generate new case!')
+            self.ui.textBrowser.setPlainText(self.Content.log)
+       # os.system('attrib +r ' + self.Content.xmlFile)
+        os.system('notepad.exe ' + self.Content.xmlFile)
 
+    # existFile, existClass, existFunction, existCase
     def checkTestExist(self):
         testDataFile = os.path.join(self.Content.codePath, self.Content.sourceFile[:-2] + '_test_case.cpp')
         if not os.path.exists(testDataFile):
@@ -235,14 +235,38 @@ class MainWindow(QMainWindow):
                 sameFunction = True
                 caseIndex = idx + 3
                 break
+        if not sameClass:
+            return True, False, False, False
         if not sameFunction:
-            return True, sameClass, sameFunction, False
-        for i in range(caseIndex, len(lines)):
-            if lines[i].find('};') >= 0:
-                return True, True, True, False
-            if lines[i].find(self.Content.caseName) >= 0:
+            return True, True, False, False
+        caseDataFile = self.Content.workspace + '\\focus_test\\' + self.Content.className + '\\' + self.Content.className + '_' + self.Content.functionName + '.xml'
+        if not os.path.exists(caseDataFile):
+            print('xml file missing!')
+            return True, True, False, False
+        with open(caseDataFile, 'r') as fopen:
+            lines = fopen.readlines()
+        for line in lines:
+            if line.find('<TestCase name = "' + self.Content.caseName + '">') >= 0:
                 return True, True, True, True
         return True, True, True, False
+        #with open(testDataFile, 'r') as fopen:
+        #    lines = fopen.readlines()
+        #sameClass, sameFunction = False, False
+        #for idx, line in enumerate(lines):
+        #    if line.find('TEST_F(' + self.Content.className) >= 0:
+        #        sameClass = True
+        #    if line.find(self.Content.className + 'Test_' + self.Content.functionName) >= 0:
+        #        sameFunction = True
+        #        caseIndex = idx + 3
+        #        break
+        #if not sameFunction:
+        #    return True, sameClass, sameFunction, False
+        #for i in range(caseIndex, len(lines)):
+        #    if lines[i].find('};') >= 0:
+        #        return True, True, True, False
+        #    if lines[i].find(self.Content.caseName) >= 0:
+        #        return True, True, True, True
+        #return True, True, True, False
 
         
 
@@ -250,8 +274,12 @@ class MainWindow(QMainWindow):
         testDataFile = os.path.join(self.Content.codePath, self.Content.sourceFile[:-2] + '_test_data.h')
         with open(testDataFile, 'r') as fopen:
             lines = fopen.readlines()
+        enter_class = False
         for line_idx, line in enumerate(lines):
-            if line.strip().startswith('struct _inputParameters'):
+            if line.find(self.Content.className + '_' + self.Content.functionName) >= 0:
+                enter_class = True
+                continue
+            if enter_class and line.strip().startswith('struct _inputParameters'):
                 index = line_idx + 2
                 break
         inputPara = []
@@ -279,7 +307,7 @@ class MainWindow(QMainWindow):
         if len(outputPara) != len(self.Content.outputPara):
             return False
         for i in range(len(outputPara)):
-            if outputPara[i][0] != self.Content.outputType[i] or outputPara[i][1] != self.Content.outputName[i]:
+            if outputPara[i][0].replace('std::', '') != self.Content.outputType[i] or outputPara[i][1] != self.Content.outputName[i]:
                 return False
         return True
 
