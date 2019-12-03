@@ -36,11 +36,11 @@ For each TextEdit field, users should satisfy certain requirements.
 4. Testname:Create test name for this test.
 
 5. Input para:Input parameters for this test. If you have multi parameters, separate with comma. And you're expected to set the value of each parameters for the test case generation. 
-Note that:
- -string or char parameter value should contain "" or ''
- -You should not omit std::
- -std::vector currently supported
-Such as : bool brcInitFlag=true,bool brcUpdateFlag=true,uint8_t passNum=2,uint8_t pipeNum=2, std::vector<std::string> packetId = {"Av1VdencPacket", "Av1VdencPacket"}
+Note that.
+a)string or char parameter value should contain "" or ''.
+b)You should not omit 'std::'.
+c)std::vector currently supported.
+A example: bool brcInitFlag=true,bool brcUpdateFlag=true,uint8_t passNum=2,uint8_t pipeNum=2, std::vector<std::string> packetId = {"Av1VdencPacket", "Av1VdencPacket"}
 
 6. Output para
 Output parameters for this test, format is the same as Input para. The value you set will be used as output reference for the test.
