@@ -438,20 +438,20 @@ class ClassContent(object):
             lines = lines[:deleteHead] + lines[deleteTail + 1:]
         indent = 0
         idx = 0
-        has_root = False
-        if len(lines) >= 2 and (lines[0].find('<root>') >= 0 or lines[1].find('<root>') >= 0):
-            has_root = True
-            del lines[-1]
-        while idx < len(lines):
-            if not has_root and indent == 0 and lines[idx].find('TestCase name') >= 0:
-                lines.insert(idx, '<root>\n')
-                indent = 4
-                has_root = True
-            else:
-                lines[idx] = ' ' * indent + lines[idx]
-            idx += 1
-        if has_root:
-            indent = 4
+        #has_root = False
+        #if len(lines) >= 2 and (lines[0].find('<root>') >= 0 or lines[1].find('<root>') >= 0):
+        #    has_root = True
+        #    del lines[-1]
+        #while idx < len(lines):
+        #    if not has_root and indent == 0 and lines[idx].find('TestCase name') >= 0:
+        #        lines.insert(idx, '<root>\n')
+        #        indent = 4
+        #        has_root = True
+        #    else:
+        #        lines[idx] = ' ' * indent + lines[idx]
+        #    idx += 1
+        #if has_root:
+        #    indent = 4
         lines.append(' ' * indent + '<TestCase name = "' + self.caseName + '">\n')
         lines.append(' ' * indent + '    <Input>\n')
         for i in range(len(self.inputPara)):
@@ -483,8 +483,8 @@ class ClassContent(object):
                 lines.append(' ' * indent + '        <' + self.outputName[i] + ' type = "' + type + '" value = "' + value + '"/>\n')
         lines.append(' ' * indent + '    </Output>\n')
         lines.append(' ' * indent + '</TestCase>\n')
-        if has_root:
-            lines.append('</root>\n')
+        #if has_root:
+        #    lines.append('</root>\n')
         with open(file, 'w', encoding='UTF-8') as fopen:
             fopen.writelines(lines)
         print('generate ', file)
