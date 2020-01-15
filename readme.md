@@ -1,7 +1,7 @@
 AutoToolForFocusTest
 ========
 
-Let's introduce how the Auto Tool app works. 
+Let's introduce how the Auto Tool app works.
 
 
 ## Start
@@ -14,7 +14,7 @@ Run .\dist\main\main.exe directly.
 2. Start from Python
 
 Install prerequisite modules first, including Pyside2, pandas.
-**main.py** is the starting module. Try to start Program from running this module. 
+**main.py** is the starting module. Try to start Program from running this module.
 
 ## Usage
 
@@ -35,7 +35,7 @@ For each TextEdit field, users should satisfy certain requirements.
 
 4. Testname:Create test name for this test.
 
-5. Input para:Input parameters for this test. If you have multi parameters, separate with comma. And you're expected to set the value of each parameters for the test case generation. 
+5. Input para:Input parameters for this test. If you have multi parameters, separate with comma. And you're expected to set the value of each parameters for the test case generation.
 Note that.
 a)string or char parameter value should contain "" or ''.
 b)You should not omit 'std::'.
@@ -57,7 +57,7 @@ Generated Files include(File path is shown on the console).
 
 Package issue
 -------
-PyInstaller can bundle a Python application and all its dependencies into a single package. 
+PyInstaller can bundle a Python application and all its dependencies into a single package.
 Users then can run the packaged app without installing a Python interpreter or any modules. Now PyInstaller
 works fine with this tool.
 

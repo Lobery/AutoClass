@@ -36,7 +36,6 @@ class MainWindow(QMainWindow):
         self.float_type = {'float32', 'float64', 'float', 'double'}
         self.container = {'string', 'vector', 'deque', 'list', 'forward_list', 'queue', 'priority_queue', 'stack'}
         self.returnValueList = []
-        
 
         self.ui.comboBoxReturnValue.setEditable(True)
 
@@ -93,6 +92,7 @@ class MainWindow(QMainWindow):
         if not className or className not in self.parser.className:
             return
         for item in self.parser.functions_of_class[className]:
+            item
             self.ui.comboBoxFunction.addItem(item)
 
     @Slot()
@@ -118,10 +118,9 @@ class MainWindow(QMainWindow):
         self.parser = read_file.read_h_file(fileName)
         self.Content.parser = self.parser
         self.Content.sourceFile = os.path.basename(fileName)
-        self.mediaPath = fileName[:fileName.find('media')]
+        self.mediaPath = fileName[:fileName.find('\\media\\') + 1]
         self.fillClassSelect()
         self.setReturnValueList()
-        
 
     @Slot()
     def fillLine(self, name, flag = True):
@@ -173,6 +172,7 @@ class MainWindow(QMainWindow):
             msgBox.exec_()
             return
 
+        self.Content.TestBaseClass = self.ui.lineEditTestBaseClass.text().strip()
         self.Content.className = self.ui.comboBoxClass.currentText()
         self.Content.functionName = self.ui.comboBoxFunction.currentText()
         self.Content.clear()
@@ -184,13 +184,13 @@ class MainWindow(QMainWindow):
             msgBox.exec_()
             return
         existFile, existClass, existFunction, existCase = self.checkTestExist()
-        if existCase:   # same case exists, update input paras   
+        if existCase:   # same case exists, update input paras
             self.Content.generateTestDataH(update = True)
-            self.Content.generateDat(update = True, append = False)
+            self.Content.generateXml(update = True, append = False)
             self.ui.textBrowser.setPlainText(self.Content.log)
         elif existFunction:   # same test with different case name, update input values
             if self.sameInputParas():
-                self.Content.generateDat(update = True, append = True)
+                self.Content.generateXml(update = True, append = True)
                 self.ui.textBrowser.setPlainText(self.Content.log)
             else:
                 msgBox = QMessageBox()
@@ -200,22 +200,22 @@ class MainWindow(QMainWindow):
                 return
         elif existClass:
             self.Content.generateTestDataH(True)
-            self.Content.generateDat(update = False)
+            self.Content.generateXml(update = False)
             self.Content.generateTestCaseCpp(True)
             self.Content.generateTestH(update = True, sameClass = True)
             self.Content.generateTestCpp(True)
             self.Content.generateResourceH()
-            self.Content.generateMediaDriverCodecUlt()
+            self.Content.generateUltRc()
             self.ui.textBrowser.setPlainText(self.Content.log)
         else:
             self.Content.generateTestDataH(existFile)
-            self.Content.generateDat(update = False)
+            self.Content.generateXml(update = False)
             self.Content.generateTestCaseCpp(existFile)
             self.Content.generateTestCaseH(existFile)
             self.Content.generateTestH(update = existFile)
             self.Content.generateTestCpp(existFile)
             self.Content.generateResourceH()
-            self.Content.generateMediaDriverCodecUlt()
+            self.Content.generateUltRc()
             self.ui.textBrowser.setPlainText(self.Content.log)
        # os.system('attrib +r ' + self.Content.xmlFile)
         os.system('notepad.exe ' + self.Content.xmlFile)
@@ -239,7 +239,7 @@ class MainWindow(QMainWindow):
             return True, False, False, False
         if not sameFunction:
             return True, True, False, False
-        caseDataFile = self.Content.workspace + '\\focus_test\\' + self.Content.className + '\\' + self.Content.className + '_' + self.Content.functionName + '.xml'
+        caseDataFile = os.path.join(self.Content.xmlPath, self.Content.className, self.Content.functionName + '.xml')
         if not os.path.exists(caseDataFile):
             print('xml file missing!')
             return True, True, False, False
@@ -249,26 +249,7 @@ class MainWindow(QMainWindow):
             if line.find('<TestCase name = "' + self.Content.caseName + '">') >= 0:
                 return True, True, True, True
         return True, True, True, False
-        #with open(testDataFile, 'r') as fopen:
-        #    lines = fopen.readlines()
-        #sameClass, sameFunction = False, False
-        #for idx, line in enumerate(lines):
-        #    if line.find('TEST_F(' + self.Content.className) >= 0:
-        #        sameClass = True
-        #    if line.find(self.Content.className + 'Test_' + self.Content.functionName) >= 0:
-        #        sameFunction = True
-        #        caseIndex = idx + 3
-        #        break
-        #if not sameFunction:
-        #    return True, sameClass, sameFunction, False
-        #for i in range(caseIndex, len(lines)):
-        #    if lines[i].find('};') >= 0:
-        #        return True, True, True, False
-        #    if lines[i].find(self.Content.caseName) >= 0:
-        #        return True, True, True, True
-        #return True, True, True, False
 
-        
 
     def sameInputParas(self):
         testDataFile = os.path.join(self.Content.codePath, self.Content.sourceFile[:-2] + '_test_data.h')
@@ -384,7 +365,7 @@ class MainWindow(QMainWindow):
                     continue
                 elif word.isalpha() or word.isalnum():
                     continue
-                else: 
+                else:
                     return False
             return True
 
@@ -468,12 +449,3 @@ if __name__ == '__main__':
     mainWindow.show()
     mainWindow.activateWindow()
     sys.exit(app.exec_())
-
-#if __name__ == "__main__":
-#    app = QtWidgets.QApplication(sys.argv)
-#    MainWindow = QtWidgets.QMainWindow()
-#    ui = Ui_MainWindow()
-#    ui.setupUi(MainWindow)
-#    MainWindow.show()
-#    sys.exit(app.exec_())
-

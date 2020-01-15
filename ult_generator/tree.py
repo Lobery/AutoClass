@@ -3,7 +3,6 @@ class Node(object):
         self.value = value
         self.lchild = left
         self.rchild = right
- 
 
 class Tree(object):
 

@@ -94,13 +94,18 @@ class HeaderParser(object):
             'return_type': '',
             'method_name': '',
             'parameters': [],
-            'virtual': False
+            'virtual': False,
+            'static' : False,
         }
         s = lines[0].strip()
 
         if len(lines) > 1:
             for i in lines[1:]:
                 s = s + ' ' + i.strip()
+
+        if s.startswith('static'):
+            method_info['static'] = True
+            s = s[7:].strip()
 
         if s.startswith('virtual'):
             method_info['virtual'] = True
@@ -124,7 +129,7 @@ class HeaderParser(object):
             tmp = i.strip().split(' ')
             tmp = [i for i in tmp if i != '']
             for t in range(len(tmp)):
-                if (tmp[t] == '*' or tmp[t] == '&') and tmp[t+1]:
+                if (tmp[t] == '*' or tmp[t] == '&') and t+1 < len(tmp) and tmp[t+1]:
                     tmp[t+1] = tmp[t] + tmp[t+1]
             tmp = list(filter(lambda x: x not in self.keywords, tmp))
             if len(tmp) == 2:
@@ -164,7 +169,7 @@ class HeaderParser(object):
                 else:
                     f_ignore = False
                     line_clr = line_clr[idx+2:]
-            if line_clr.startswith('/*'):
+            if line_clr.find('/*') >= 0:
                 f_ignore = True
                 continue                   # continue may ignore the content and cause some problem
             if line_clr.find('//') != -1:
@@ -176,7 +181,7 @@ class HeaderParser(object):
             if line_clr.endswith('\\') and line_idx + 1 < len(self.lines):
                 self.lines[line_idx + 1] = line_clr[:-1] + self.lines[line_idx + 1]
                 continue
-            if line_clr.startswith('typedef enum'):
+            if line_clr.find('enum') >= 0:
                 f_enum = True
                 enumName = line_clr.strip('{').strip().split()[-1]
                 self.enum.append([enumName,[]])
@@ -191,7 +196,7 @@ class HeaderParser(object):
                 continue
             if line_clr.startswith('#include'):
                 self.includes.add(line_clr[10:-1])
-            if f_method:
+            if f_method and className:
                 self.methods[-1].append(line)
                 if line_clr[-1] == ';':
                     self.methods_info.append(self.parse_method_info(self.methods[-1]))
@@ -208,6 +213,8 @@ class HeaderParser(object):
                 self.namespace = self.get_namespace(line_clr)
                 continue
             if line_clr.startswith('class'):
+                if line_clr.find(';') >= 0:
+                    continue
                 self.class_name, super_class = self.get_class(line_clr)
                 className = self.class_name
                 self.super_class[className] = super_class
@@ -215,6 +222,8 @@ class HeaderParser(object):
                 self.functions_of_class[className] = []
                 continue
             if line_clr.startswith('struct'):
+                if line_clr.find(';') >= 0:
+                    continue
                 f_struct = True
             if line_clr.startswith('public:'):
                 method_type = 'public'
@@ -230,8 +239,10 @@ class HeaderParser(object):
             #or has '=':
             #uint32_t x = 256 * sizeof(int32_t)  is not a function
             #void f(s='')  is a function
-            if not line_clr.startswith('#') and line_clr.find('(') != -1 and (line_clr.find('=') == -1 or (line_clr.find('=') > line_clr.find('('))):
-                self.methods.append([line])
+            if className and not line_clr.startswith('#') and line_clr.find('(') != -1 and (line_clr.find('=') == -1 or (line_clr.find('=') > line_clr.find('('))):
+                if line_clr.count(':') == 1:
+                        line_clr = line_clr[:line_clr.find(':')] + ';'
+                self.methods.append([line_clr])
                 if not(line_clr[-1] == ';' or line_clr[-1] == '}'):
                     f_method = True
                 else:

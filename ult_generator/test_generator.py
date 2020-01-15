@@ -235,7 +235,7 @@ class TestGenerator(Generator):
             method_test_expression = self.add_arg_init(lines, p['name'], p['type'], varslist, method_test_expression)
 
         method_test_expression = method_test_expression[:-2] + ')'
-        #add input params null poniter check 
+        #add input params null poniter check
         nullptr_check_str = space12Str +'EXPECT_EQ('+ info.class_name + '::' + method_info['method_name'] + '('
         iexpression = space12Str +'EXPECT_EQ( '+ method_test_expression + ', MOS_STATUS_NULL_POINTER);\n'
 
