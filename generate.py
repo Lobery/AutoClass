@@ -26,11 +26,12 @@ class ClassContent(object):
         self.sourceFile = ''
         self.FTindex = ''
         self.returnValue = ''
-        self.tag = ''
+        self.component = ''
         self.log = ''
         self.xmlFile = ''
         self.ultPath = ''
         self.xmlPath = ''
+        self.platform = ''
         self.typeDic = {'int' : '0',
                         'uint4_t': '0',
                         'uint8_t': '0',
@@ -106,7 +107,7 @@ class ClassContent(object):
             lines = []
             lines.extend(self.getHeaders(type = 'cmake'))
             lines.append('set(TMP_RESOURCES_\n')
-            lines.append('    ${CMAKE_CURRENT_LIST_DIR}/media_driver_' + self.tag + '_ult.rc\n')
+            lines.append('    ${CMAKE_CURRENT_LIST_DIR}/media_driver_' + self.component + '_ult.rc\n')
             lines.append('    )\n')
             lines.append('\n')
             lines.append('set(ULT_RESOURCES_\n')
@@ -146,6 +147,12 @@ class ClassContent(object):
         separatePath = path.split('\\')
         separatePath = separatePath[separatePath.index('media_driver_next') + 1: ]
         del separatePath[-1]
+        self.platform = separatePath[1]
+        if separatePath[0] == 'proprietary':
+            if len(self.platform < 3):
+                print('No platform information!')
+                return;
+            self.platform = [3] 
         if separatePath[0] in ('windows', 'linux'):
             del separatePath[1]
         separatePath.insert(1, 'test')
@@ -158,24 +165,24 @@ class ClassContent(object):
                 idx -= 1
             idx += 1
         if 'codec' in separatePath:
-            self.tag = 'codec'
+            self.component = 'codec'
         elif 'vp' in separatePath:
-            self.tag = 'vp'
+            self.component = 'vp'
         elif 'cp' in separatePath:
-            self.tag = 'cp'
+            self.component = 'cp'
         elif 'os' in separatePath:
-            self.tag = 'os'
+            self.component = 'os'
         else:
-            self.tag = 'shared'
+            self.component = 'shared'
             return 'shared not supported currently!'
-        cmakeFile = self.ultPath + 'windows\\test\\' + self.tag + '\\ult_srcs.cmake'
+        cmakeFile = self.ultPath + 'windows\\test\\' + self.platform + '\\' + self.component + '\\ult_srcs.cmake'
         if not os.path.exists(cmakeFile):
             return 'missing cmake file. Platform not supported!'
         with open(cmakeFile, 'r') as fopen:
             lines = fopen.readlines()
         found = False
         insertIndex = -1
-        subdirectory = 'ult_include_subdirectory(../../../' + '/'.join(separatePath[:4]) + ')'
+        subdirectory = '    ult_include_subdirectory(../../../../' + '/'.join(separatePath[:4]) + ')'
         for idx, line in enumerate(lines):
             if line.find('ult_include_subdirectory') >= 0:
                 insertIndex = idx
@@ -185,12 +192,12 @@ class ClassContent(object):
             lines.insert(insertIndex + 1, subdirectory + '\n')
         with open(cmakeFile, 'w') as fopen:
             fopen.writelines(lines)
-        self.workspace = self.ultPath + 'windows\\test\\' + self.tag + '\\test_data'
+        self.workspace = self.ultPath + 'windows\\test\\' + self.platform + '\\' + self.component + '\\test_data'
         self.xmlPath = self.ultPath + 'test_data\\' + separatePath[0] + '\\' + '\\'.join(separatePath[2:])
-        self.referencePath = '../../../../' + 'test_data/' + separatePath[0] + '/' + '/'.join(separatePath[2:]) + '/' + self.className + '/'
+        self.referencePath = '../../../../../' + 'test_data/' + separatePath[0] + '/' + '/'.join(separatePath[2:]) + '/' + self.className + '/'
         if not os.path.exists(self.workspace):
             os.makedirs(self.workspace)
-            cmakeFile = self.ultPath + 'windows\\test\\' + self.tag + '\\ult_srcs.cmake'
+            cmakeFile = self.ultPath + 'windows\\test\\' + self.component + '\\ult_srcs.cmake'
             with open(cmakeFile, 'r') as fopen:
                 lines = fopen.readlines()
             for idx, line in enumerate(lines):
@@ -777,7 +784,7 @@ class ClassContent(object):
         return ''
 
     def generateUltRc(self):
-        file = os.path.join(self.workspace, 'media_driver_' + self.tag +'_ult.rc')
+        file = os.path.join(self.workspace, 'media_driver_' + self.component +'_ult.rc')
         if not os.path.exists(file):
             with open(file, 'w') as fopen:
                 fopen.write('#include "resource.h"\n')
