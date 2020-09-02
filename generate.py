@@ -15,7 +15,10 @@ class ClassContent(object):
         self.outputValue = []
         self.outputName = []
         self.file_header = os.getcwd() + '\\' + 'sample_header.txt'
-        self.workspace = ''
+        self.workspace = ''          # folder for ult.rc & resource.h
+        self.xmlPath = ''            # folder for xml data file
+        self.codePath = ''           # folder for function TEST code
+        self.classTestCaseFile = ''  # folder for class TestCase.cpp
         self.includes = ['vp_reder_sfc_base.h', 'pipeline.h']
         #self.lines = []
         self.level = 0
@@ -30,7 +33,6 @@ class ClassContent(object):
         self.log = ''
         self.xmlFile = ''
         self.ultPath = ''
-        self.xmlPath = ''
         self.platform = ''
         self.typeDic = {'int' : '0',
                         'uint4_t': '0',
@@ -40,12 +42,12 @@ class ClassContent(object):
                         'uint64_t': '0',
                         'float' : '0',
                         'double' : '0',
-                        'std::vector' : '""',
-                        'vector' : '""',
+                        'std::vector' : '{}',
+                        'vector' : '{}',
                         'std::string' : '""',
                         'string' : '""',
                         'boolean' : 'False',
-                        'char' : ''}
+                        'char' : 0}
         self.TAB_SPACE = 4
         self.TestBaseClass = ''
         self.referencePath = ''
@@ -149,7 +151,7 @@ class ClassContent(object):
         del separatePath[-1]
         self.platform = separatePath[1]
         if separatePath[0] == 'proprietary':
-            if len(self.platform < 3):
+            if len(self.platform) < 3:
                 print('No platform information!')
                 return;
             self.platform = [3] 
@@ -175,62 +177,41 @@ class ClassContent(object):
         else:
             self.component = 'shared'
             return 'shared not supported currently!'
-        cmakeFile = self.ultPath + 'windows\\test\\' + self.platform + '\\' + self.component + '\\ult_srcs.cmake'
-        if not os.path.exists(cmakeFile):
-            return 'missing cmake file. Platform not supported!'
-        with open(cmakeFile, 'r') as fopen:
-            lines = fopen.readlines()
-        found = False
-        insertIndex = -1
-        subdirectory = '    ult_include_subdirectory(../../../../' + '/'.join(separatePath[:4]) + ')'
-        for idx, line in enumerate(lines):
-            if line.find('ult_include_subdirectory') >= 0:
-                insertIndex = idx
-            if line.find(subdirectory) >= 0:
-                found = True
-        if not found:
-            lines.insert(insertIndex + 1, subdirectory + '\n')
-        with open(cmakeFile, 'w') as fopen:
-            fopen.writelines(lines)
+        
         self.workspace = self.ultPath + 'windows\\test\\' + self.platform + '\\' + self.component + '\\test_data'
         self.xmlPath = self.ultPath + 'test_data\\' + separatePath[0] + '\\' + '\\'.join(separatePath[2:])
-        self.referencePath = '../../../../../' + 'test_data/' + separatePath[0] + '/' + '/'.join(separatePath[2:]) + '/' + self.className + '/'
-        if not os.path.exists(self.workspace):
-            os.makedirs(self.workspace)
-            cmakeFile = self.ultPath + 'windows\\test\\' + self.component + '\\ult_srcs.cmake'
-            with open(cmakeFile, 'r') as fopen:
-                lines = fopen.readlines()
-            for idx, line in enumerate(lines):
-                if line.find('ult_include_subdirectory') >= 0:
-                    lines.insert(idx, 'ult_include_subdirectory(test_data)\n')
+        self.referencePath = '../../../../' + 'test_data/' + separatePath[0] + '/' + '/'.join(separatePath[2:]) + '/' + self.className + '/'
+        self.codePath = self.ultPath + '\\'.join(separatePath)
+
+        # generate cmake file in workspace
+        directory = os.path.join(self.ultPath, 'windows', 'test', self.platform, self.component)
+        cmakeFile = os.path.join(directory, 'ult_srcs.cmake')
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        if not os.path.exists(cmakeFile):
+            with open(cmakeFile, 'w') as f:
+                lines = self.getHeaders('cmake')
+                lines.append('ult_include_subdirectory(' + 'test_data' + ')\n')
+                lines.append('ult_add_curr_to_include_path()\n')
+                f.writelines(lines)
+        else:
+            with open(cmakeFile, 'r') as f:
+                lines = f.readlines()
+            flag = False
+            idx = -1
+            for index, line in enumerate(lines):
+                if line.find('ult_include_subdirectory(test_data)') >= 0:
+                    flag = True
                     break
-            for idx, line in enumerate(lines):
-                if line.find('target_include_directories(${ULT_LIB_PROJECT_NAME_} BEFORE') >= 0:
-                    lines.insert(idx + 1, '    PRIVATE ${CMAKE_CURRENT_LIST_DIR}/test_data\n')
-                    break
-            with open(cmakeFile, 'w') as fopen:
-                fopen.writelines(lines)
-            self.generateCmake('resource', self.workspace)
-        self.codePath = self.ultPath + '\\'.join(separatePath[:4])
-        midPath = separatePath[4:]
-        if not os.path.exists(self.codePath):
-            os.makedirs(self.codePath)
-        while midPath:
-            if not os.path.exists(self.codePath + '\\ult_srcs.cmake'):
-                self.generateCmake('', self.codePath)
-            if not os.path.exists(self.codePath + '\\' + midPath[0]):
-                self.generateCmake(midPath[0], self.codePath)
-                os.mkdir(self.codePath + '\\' + midPath[0])
-            self.codePath = self.codePath + '\\' + midPath[0]
-            del midPath[0]
-        source = separatePath[:3]
-        if 'encode' in separatePath:
-            source.append('encode')
-        elif 'decode' in separatePath:
-            source.append('decode')
-        elif len(separatePath) > 4:
-            source.append(separatePath[4])
-        self.generateCmake('code', self.codePath, '\\\\'.join(source[1:]))
+                if line.find('ult_add_curr_to_include_path') >= 0:
+                    idx = index
+            if not flag:
+                lines.insert(idx, 'ult_include_subdirectory(test_data)\n')
+            with open(cmakeFile, 'w') as f:
+                f.writelines(lines)
+        directory = os.path.join(directory, 'test_data')
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         return ''
 
     def isEnumType(self, type):
@@ -241,6 +222,68 @@ class ClassContent(object):
                 return 1
         print('WARNING: Cannot find enum type = ' + type + '.')
         return 1
+
+    def generateCodePath(self):
+        if not os.path.exists(self.codePath):
+            os.makedirs(self.codePath)
+        folders = self.codePath.split('\\')
+        idx = folders.index('test') + 3
+        directory = '\\'.join(folders[:idx])
+        folders = folders[idx:]
+        while True:
+            cmakeFile = os.path.join(directory, 'ult_srcs.cmake')
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+            if not os.path.exists(cmakeFile):
+                with open(cmakeFile, 'w') as f:
+                    lines = self.getHeaders('cmake')
+                    lines.append('ult_include_subdirectory(' + folders[0] + ')\n')
+                    lines.append('ult_add_curr_to_include_path()\n')
+                    f.writelines(lines)
+            else:
+                with open(cmakeFile, 'r') as f:
+                    lines = f.readlines()
+                flag = False
+                idx = -1
+                for index, line in enumerate(lines):
+                    if line.find('ult_include_subdirectory(' + folders[0] + ')') >= 0:
+                        flag = True
+                        break
+                    if line.find('ult_add_curr_to_include_path') >= 0:
+                        idx = index
+                if not flag:
+                    line.insert(idx, 'ult_include_subdirectory(' + folders[0] + ')\n')
+            directory = os.path.join(directory, folders[0])
+            del folders[0]
+            if not folders:
+                cmakeFile = os.path.join(directory, 'ult_srcs.cmake')
+                if not os.path.exists(cmakeFile):
+                    lines = self.getHeaders('cmake', self.sourceFile[:-2])
+                    with open(cmakeFile, 'w') as f:
+                        f.writelines(lines)
+                else:
+                    files = os.listdir(directory)
+                    if self.sourceFile + '_test_data.h' not in files:
+                        with open(cmakeFile, 'r') as f:
+                            lines = f.readlines()
+                        idx1 = -1
+                        idx2 = -1
+                        for i, line in enumerate(lines):
+                            if (line.find('set(TMP_HEADERS_') >= 0):
+                                idx1 = i + 1
+                            if (line.find('set(TMP_SOURCES_') >= 0):
+                                idx2 = i + 1
+                                
+                        lines.insert(idx2, '${CMAKE_CURRENT_LIST_DIR}/' + self.sourceFile[:-2] + '_test_case.cpp\n')
+                        lines.insert(idx2, '${CMAKE_CURRENT_LIST_DIR}/' + self.sourceFile[:-2] + '_test.cpp\n')
+                        lines.insert(idx1, '${CMAKE_CURRENT_LIST_DIR}/' + self.sourceFile[:-2] + '_test.h\n')
+                        lines.insert(idx1, '${CMAKE_CURRENT_LIST_DIR}/' + self.sourceFile[:-2] + '_test_case.h\n')
+                        lines.insert(idx1, '${CMAKE_CURRENT_LIST_DIR}/' + self.sourceFile[:-2] + '_test_data.h\n')
+                        with open(cmakeFile, 'w') as f:
+                            f.writelines(lines)
+                break
+                    
+
 
     # append if exists
     def generateTestDataH(self, update = False):
@@ -554,8 +597,10 @@ class ClassContent(object):
     def getDefaultValue(self, para):
         if para in self.typeDic:
             return self.typeDic[para]
-        else:
-            # enum type
+        elif '*' in para:
+            return 'nullptr'
+        else:    
+        # enum type
             return '0'
 
     def generateTestCaseH(self, update = False):
@@ -690,7 +735,7 @@ class ClassContent(object):
             insertLines.append(' ' * indent + 'virtual ~' + self.className + 'Test(){};\n')
             insertLines.append('\n')
             insertLines.append(' ' * indent + '//!\n')
-            insertLines.append(' ' * indent + '//! \\brief  Add focus test for ActivateVdencVideoPackets\n')
+            insertLines.append(' ' * indent + '//! \\brief  Add focus test for ' + self.functionName + '\n')
             insertLines.append(' ' * indent + '//! \\param  [in] &testData\n')
             insertLines.append(' ' * indent + '//!         reference to TestData\n')
             insertLines.append(' ' * indent + '//! \\return MOS_STATUS\n')
@@ -762,6 +807,8 @@ class ClassContent(object):
 
     def generateResourceH(self):
         self.checkCMake()
+        if not os.path.exists(self.workspace):
+            os.makedirs(self.workspace)
         file = os.path.join(self.workspace, 'resource.h')
         resource = self.className + '_' + self.functionName
         insertLine = '#define ' + resource + ' ' * (self.BLANK_NUM - len(resource))
@@ -818,6 +865,47 @@ class ClassContent(object):
             lines.append('# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR\n')
             lines.append('# OTHER DEALINGS IN THE SOFTWARE.\n')
             lines.append('\n')
+            if fileName and '.' not in fileName:
+                lines.append('set(TMP_HEADERS_\n')
+                lines.append('    ${CMAKE_CURRENT_LIST_DIR}/' + fileName + '_test.h\n')
+                lines.append('    ${CMAKE_CURRENT_LIST_DIR}/' + fileName + '_test_case.h\n')
+                lines.append('    ${CMAKE_CURRENT_LIST_DIR}/' + fileName + '_test_data.h\n')
+                lines.append(')\n')
+                lines.append('\n')
+                lines.append('set(TMP_SOURCES_\n')
+                lines.append('    ${CMAKE_CURRENT_LIST_DIR}/' + fileName + '_test.cpp\n')
+                lines.append('    ${CMAKE_CURRENT_LIST_DIR}/' + fileName + '_case.cpp\n')
+                lines.append(')\n')
+                lines.append('\n')
+                lines.append('set(ULT_LIB_HEADERS_ ${ULT_LIB_HEADERS_} ${TMP_HEADERS_})\n')
+                lines.append('set(ULT_LIB_SOURCES_ ${ULT_LIB_SOURCES_} ${TMP_SOURCES_})\n')
+                lines.append('\n')
+                lines.append('source_group("test\\gen12_pvc\\enc" FILES ${TMP_HEADERS_} ${TMP_SOURCES_})\n')
+                lines.append('\n')
+                lines.append('ult_add_curr_to_include_path()\n')
+
+            elif fileName:
+                lines.append('set(TMP_SOURCES_\n')
+                lines.append('    ${CMAKE_CURRENT_LIST_DIR}/' + fileName + '\n')
+                lines.append(')\n')
+                lines.append('\n')
+                lines.append('set(TMP_HEADERS_\n')
+                lines.append(')\n')
+                lines.append('\n')
+                lines.append('set(ULT_LIB_SOURCES_\n')
+                lines.append('    ${ULT_LIB_SOURCES_}\n')
+                lines.append('    ${TMP_SOURCES_}\n')
+                lines.append(')\n')
+                lines.append('\n')
+                lines.append('set(ULT_LIB_HEADERS_\n')
+                lines.append('    ${ULT_LIB_HEADERS_}\n')
+                lines.append('    ${TMP_HEADERS_}\n')
+                lines.append(')\n')
+                lines.append('\n')
+                lines.append('source_group("Sources" FILES ${TMP_SOURCES_})\n')
+                lines.append('source_group("Header Files" FILES ${TMP_HEADERS_})\n')
+                lines.append('\n')
+                lines.append('ult_add_curr_to_include_path()\n')
             return lines
         else:
             lines = []

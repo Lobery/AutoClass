@@ -45,6 +45,11 @@ def find_super_class_file(class_name, includes, media_path):
             # if 2 class with same name occur in 2 different include files, may cause error
             for line in lines:
                 if line.strip().startswith('class') and line.strip()[5:].strip().startswith(class_name):
+                    if 6 + len(class_name) + 1 >= len(line):
+                        continue
+                    next_character = line[6 + len(class_name) + 1]
+                    if next_character.isalnum() or next_character == '_':
+                        continue
                     return file_full_name
 
 def findSubClass(class_dic, super_class):

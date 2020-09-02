@@ -208,6 +208,7 @@ class MainWindow(QMainWindow):
             self.Content.generateUltRc()
             self.ui.textBrowser.setPlainText(self.Content.log)
         else:
+            self.Content.generateCodePath()
             self.Content.generateTestDataH(existFile)
             self.Content.generateXml(update = False)
             self.Content.generateTestCaseCpp(existFile)
